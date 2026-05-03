@@ -47,6 +47,28 @@ router.post('/', (req, res) => {
   }
 });
 
+// PATCH /api/presets/:id
+// Body: { name }  — renames an existing preset
+router.patch('/:id', (req, res) => {
+  const presetId = Number(req.params.id);
+  const { name } = req.body;
+
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'name is required' });
+  }
+
+  const preset = db.prepare(
+    'SELECT id FROM presets WHERE id = ? AND user_id = ?'
+  ).get(presetId, req.user.id);
+
+  if (!preset) {
+    return res.status(404).json({ error: 'Preset not found' });
+  }
+
+  db.prepare('UPDATE presets SET name = ? WHERE id = ?').run(name.trim(), presetId);
+  res.json({ id: presetId, name: name.trim() });
+});
+
 // DELETE /api/presets/:id
 // Only allows deletion of presets that belong to the logged-in user
 router.delete('/:id', (req, res) => {
