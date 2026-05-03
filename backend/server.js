@@ -11,12 +11,13 @@ const presetRoutes = require('./routes/presets');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Allow localhost in dev + the deployed frontend URL set via FRONTEND_URL env var
+// Allow localhost in dev; in production allow the app's own Render URL (set automatically by Render)
 const localhostRegex = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
     if (localhostRegex.test(origin)) return callback(null, true);
+    if (process.env.RENDER_EXTERNAL_URL && origin === process.env.RENDER_EXTERNAL_URL) return callback(null, true);
     if (process.env.FRONTEND_URL && origin === process.env.FRONTEND_URL) return callback(null, true);
     callback(new Error('Not allowed by CORS'));
   },
