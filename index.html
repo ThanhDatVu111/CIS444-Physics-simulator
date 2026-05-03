@@ -1356,7 +1356,10 @@
     // ===================================================================
     // PRESETS FEATURE – communicates with the Express backend on port 3001
     // ===================================================================
-    const API = 'http://localhost:3001/api';
+    // localhost hits the dev backend on port 3001; in production Express serves both
+    const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'http://localhost:3001/api'
+      : '/api';
 
     // In-memory auth state (token is kept only for this page session)
     let presetsToken = localStorage.getItem('presetsToken') || null;
@@ -1484,14 +1487,16 @@
         }
 
         container.innerHTML = presets.map(p => `
-          <div class="mini-card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-            <div>
+          <div class="mini-card" id="preset-card-${p.id}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div id="preset-name-${p.id}">
               <div style="font-weight:700;font-size:0.9rem;">${escHtml(p.name)}</div>
               <div style="font-size:0.8rem;color:var(--muted);">${escHtml(p.mode)}</div>
             </div>
             <div style="display:flex;gap:6px;">
               <button class="primary" onclick="presetsLoad(${p.id})"
                 style="width:auto;padding:6px 12px;font-size:0.8rem;border-radius:999px;">Load</button>
+              <button class="ghost" onclick="presetsRename(${p.id})"
+                style="width:auto;padding:6px 12px;font-size:0.8rem;border-radius:999px;">Rename</button>
               <button class="danger" onclick="presetsDelete(${p.id})"
                 style="width:auto;padding:6px 12px;font-size:0.8rem;border-radius:999px;">Delete</button>
             </div>
@@ -1538,6 +1543,50 @@
         presetsLoadList();
       } catch {
         alert('Could not delete preset. Is the server running?');
+      }
+    }
+
+    // ---- Rename ----
+
+    function presetsRename(id) {
+      const container = document.getElementById('presetsList');
+      const presets = JSON.parse(container.dataset.presets || '[]');
+      const preset = presets.find(p => p.id === id);
+      if (!preset) return;
+
+      const nameDiv = document.getElementById(`preset-name-${id}`);
+      nameDiv.innerHTML = `
+        <input id="rename-input-${id}" type="text" value="${escHtml(preset.name)}"
+          style="background:var(--card);border:1px solid var(--accent);color:var(--fg);padding:4px 8px;border-radius:6px;width:130px;font-size:0.85rem;"
+          onkeydown="if(event.key==='Enter')presetsRenameSubmit(${id});if(event.key==='Escape')presetsLoadList();">
+        <div style="display:flex;gap:4px;margin-top:4px;">
+          <button class="primary" onclick="presetsRenameSubmit(${id})"
+            style="width:auto;padding:4px 10px;font-size:0.75rem;border-radius:999px;">Save</button>
+          <button class="ghost" onclick="presetsLoadList()"
+            style="width:auto;padding:4px 10px;font-size:0.75rem;border-radius:999px;">Cancel</button>
+        </div>
+      `;
+      document.getElementById(`rename-input-${id}`).focus();
+    }
+
+    async function presetsRenameSubmit(id) {
+      const input = document.getElementById(`rename-input-${id}`);
+      const name = input ? input.value.trim() : '';
+      if (!name) return;
+
+      try {
+        const res = await fetch(`${API}/presets/${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${presetsToken}`
+          },
+          body: JSON.stringify({ name })
+        });
+        if (res.status === 403) { presetsLogout(); return; }
+        presetsLoadList();
+      } catch {
+        presetsLoadList();
       }
     }
 
