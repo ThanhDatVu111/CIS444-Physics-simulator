@@ -564,9 +564,14 @@
     </div>
   </div>
 
+  <!-- Mode modules – loaded before the main script so their functions are in scope -->
+  <script src="js/modes/projectile.js"></script>
+  <script src="js/modes/gravity.js"></script>
+  <script src="js/modes/blackhole.js"></script>
+
   <script>
-    const canvas = document.getElementById('simCanvas');
-    const ctx = canvas.getContext('2d');
+    var canvas = document.getElementById('simCanvas');
+    var ctx = canvas.getContext('2d');
 
     const modeSelect = document.getElementById('modeSelect');
     const playBtn = document.getElementById('playBtn');
@@ -598,7 +603,7 @@
       circular: document.getElementById('circularControls')
     };
 
-    const inputs = {
+    var inputs = {
       velocity: document.getElementById('velocityInput'),
       angle: document.getElementById('angleInput'),
       gravity: document.getElementById('gravityInput'),
@@ -640,7 +645,7 @@
       angularSpeed: document.getElementById('angularSpeedValue')
     };
 
-    const WORLD = {
+    var WORLD = {
       width: canvas.width,
       height: canvas.height,
       floorY: canvas.height - 56,
@@ -648,11 +653,11 @@
     };
 
     let currentMode = 'projectile';
-    let running = false;
+    var running = false;
     let lastTimestamp = 0;
     let simTime = 0;
     let trail = [];
-    let state = {};
+    var state = {};
 
     function toRadians(deg) {
       return deg * Math.PI / 180;
@@ -803,54 +808,11 @@
       resetSimulation();
     }
 
-    function createProjectileState() {
-      const v = Number(inputs.velocity.value);
-      const angle = toRadians(Number(inputs.angle.value));
-      state = {
-        ball: {
-          x: 70,
-          y: WORLD.floorY,
-          vx: v * Math.cos(angle),
-          vy: -v * Math.sin(angle),
-          r: 14,
-          color: '#6ee7ff'
-        }
-      };
-      resetTrail(260);
-    }
+    // createProjectileState → js/modes/projectile.js
 
-    function createGravityState() {
-      const mass = Number(inputs.mass.value);
-      const dropHeightMeters = Number(inputs.dropHeight.value);
-      state = {
-        ball: {
-          x: WORLD.width / 2,
-          y: WORLD.floorY - dropHeightMeters * WORLD.scale,
-          vx: 0,
-          vy: 0,
-          mass,
-          r: Math.max(12, Math.min(24, mass / 1.5)),
-          color: '#a78bfa'
-        },
-        lastPeak: dropHeightMeters
-      };
-      resetTrail(220);
-    }
+    // createGravityState → js/modes/gravity.js
 
-    function createBlackHoleState() {
-      state = {
-        center: { x: WORLD.width / 2, y: WORLD.height / 2 },
-        ball: {
-          x: WORLD.width / 2 + 180,
-          y: WORLD.height / 2 - 30,
-          vx: 0,
-          vy: -Number(inputs.orbitSpeed.value),
-          r: 11,
-          color: '#fb923c'
-        }
-      };
-      resetTrail(320);
-    }
+    // createBlackHoleState → js/modes/blackhole.js
 
     function createFreeFallState() {
       const h = Number(inputs.freefallHeight.value);
@@ -925,56 +887,11 @@
       if (trail.length > trail.limit) trail.shift();
     }
 
-    function updateProjectile(dt) {
-      const g = getGravityPx();
-      const ball = state.ball;
-      ball.vy += g * dt;
-      ball.x += ball.vx * dt;
-      ball.y += ball.vy * dt;
-      pushTrail(ball.x, ball.y);
+    // updateProjectile → js/modes/projectile.js
 
-      if (ball.y >= WORLD.floorY) {
-        ball.y = WORLD.floorY;
-        running = false;
-      }
-      if (ball.x > WORLD.width + 40) running = false;
-    }
+    // updateGravity → js/modes/gravity.js
 
-    function updateGravity(dt) {
-      const g = getGravityPx();
-      const loss = Number(inputs.bounce.value);
-      const ball = state.ball;
-      ball.vy += g * dt;
-      ball.y += ball.vy * dt;
-      pushTrail(ball.x, ball.y);
-
-      if (ball.y >= WORLD.floorY) {
-        ball.y = WORLD.floorY;
-        ball.vy = -ball.vy * loss;
-        state.lastPeak = Math.max(0, (WORLD.floorY - ball.y) / WORLD.scale);
-        if (Math.abs(ball.vy) < 18) {
-          ball.vy = 0;
-          running = false;
-        }
-      }
-    }
-
-    function updateBlackHole(dt) {
-      const pull = Number(inputs.pull.value);
-      const { center, ball } = state;
-      const dx = center.x - ball.x;
-      const dy = center.y - ball.y;
-      const distSq = Math.max(dx * dx + dy * dy, 1600);
-      const dist = Math.sqrt(distSq);
-      const ax = (pull * dx) / distSq;
-      const ay = (pull * dy) / distSq;
-      ball.vx += ax * dt;
-      ball.vy += ay * dt;
-      ball.x += ball.vx * dt;
-      ball.y += ball.vy * dt;
-      pushTrail(ball.x, ball.y);
-      if (dist < 26) running = false;
-    }
+    // updateBlackHole → js/modes/blackhole.js
 
     function updateFreeFall(dt) {
       const g = getGravityPx();
@@ -1108,38 +1025,11 @@
       ctx.stroke();
     }
 
-    function drawProjectile() {
-      drawTrail('rgba(110,231,255,0.7)');
-      drawBall(state.ball);
-    }
+    // drawProjectile → js/modes/projectile.js
 
-    function drawGravity() {
-      drawTrail('rgba(167,139,250,0.65)');
-      drawBall(state.ball);
-    }
+    // drawGravity → js/modes/gravity.js
 
-    function drawBlackHole() {
-      const { center } = state;
-      ctx.beginPath();
-      ctx.arc(center.x, center.y, 28, 0, Math.PI * 2);
-      ctx.fillStyle = '#020617';
-      ctx.shadowBlur = 28;
-      ctx.shadowColor = '#f97316';
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(251,191,36,0.7)';
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(center.x, center.y, 52, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(251,191,36,0.25)';
-      ctx.lineWidth = 6;
-      ctx.stroke();
-
-      drawTrail('rgba(249,115,22,0.65)');
-      drawBall(state.ball);
-    }
+    // drawBlackHole → js/modes/blackhole.js
 
     function drawFreeFall() {
       state.balls.forEach(drawBall);
@@ -1227,49 +1117,11 @@
     }
 
     function updateStats() {
-      if (currentMode === 'projectile') {
-        const b = state.ball;
-        const height = (WORLD.floorY - b.y) / WORLD.scale;
-        const speed = Math.hypot(b.vx, b.vy) / WORLD.scale;
-        const pe = Math.max(0, Number(inputs.gravity.value) * height).toFixed(1);
-        setStats({
-          height,
-          speed,
-          direction: b.vy < 0 ? 'Upward' : 'Downward',
-          energy: `PE ${pe}`,
-          extra: `x speed ${(b.vx / WORLD.scale).toFixed(1)} m/s`
-        });
-      }
+      if (currentMode === 'projectile') updateProjectileStats();
 
-      if (currentMode === 'gravity') {
-        const b = state.ball;
-        const height = (WORLD.floorY - b.y) / WORLD.scale;
-        const speed = Math.abs(b.vy) / WORLD.scale;
-        const pe = (Number(inputs.mass.value) * Number(inputs.gravity.value) * Math.max(height, 0)).toFixed(1);
-        const direction = Math.abs(b.vy) < 0.1 ? 'At Rest' : b.vy < 0 ? 'Upward' : 'Downward';
-        setStats({
-          height,
-          speed,
-          direction,
-          energy: `PE ${pe} J`,
-          extra: `Bounce ${(Number(inputs.bounce.value) * 100).toFixed(0)}%`
-        });
-      }
+      if (currentMode === 'gravity') updateGravityStats();
 
-      if (currentMode === 'blackhole') {
-        const { center, ball } = state;
-        const dx = center.x - ball.x;
-        const dy = center.y - ball.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) / WORLD.scale;
-        const speed = Math.hypot(ball.vx, ball.vy) / WORLD.scale;
-        setStats({
-          height: dist,
-          speed,
-          direction: 'Orbiting',
-          energy: `r ${dist.toFixed(2)} m`,
-          extra: `Pull ${Number(inputs.pull.value)}`
-        });
-      }
+      if (currentMode === 'blackhole') updateBlackHoleStats();
 
       if (currentMode === 'freefall') {
         const h = (WORLD.floorY - state.balls[0].y) / WORLD.scale;
