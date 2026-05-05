@@ -2,8 +2,7 @@
 
 An interactive, browser-based physics simulator for students. Explore 7 physics concepts in real time, with user accounts and saved presets backed by a REST API and SQLite database.
 
-**Live app:** `https://your-app.onrender.com` ← replace with your Render URL
-
+**Live app:** ` https://cis444-physics-simulator.onrender.com/`
 ---
 
 ## Features
